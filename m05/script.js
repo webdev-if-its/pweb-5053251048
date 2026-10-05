@@ -17,20 +17,23 @@ export const katalog = [
 
 // Level 1 — ada bug: harga 0 malah menampilkan "Rp" tanpa angka sama sekali.
 export function formatRupiah(angka) {
-  if (!angka) return 'Rp';
+  if (!angka) return 'Rp 0';
   return 'Rp ' + angka.toLocaleString('id-ID');
 }
 
 // Level 2 — TODO: kembalikan buku yang `tersedia` saja, TANPA mengubah
 // array `daftar` yang asli (jangan pakai .sort/.splice/push ke `daftar`).
 export function saringTersedia(daftar) {
-  return daftar;
+  return daftar.filter(buku => buku.tersedia);
 }
 
 // Level 3 — TODO: ambil elemen #judul-pengumuman dengan querySelector,
 // lalu ubah teksnya menjadi HURUF BESAR SEMUA.
 export function sorotJudulPengumuman() {
-  // tulis di sini
+  const judul = document.querySelector('#judul-pengumuman');
+  if (judul) {
+    judul.textContent = judul.textContent.toUpperCase();
+  }
 }
 
 // Level 4 — TODO: ambil SEMUA <li> di #daftar-pengumuman dengan
@@ -38,16 +41,31 @@ export function sorotJudulPengumuman() {
 // (tanpa peduli huruf besar/kecil), tambahkan prefix "⚠ " di depan teksnya.
 // Jangan tambahkan prefix dua kali kalau fungsi ini terpanggil berulang.
 export function tandaiPengumumanPenting() {
-  // tulis di sini
+  const pengumuman = document.querySelectorAll('#daftar-pengumuman li');
+  pengumuman.forEach(p => {
+    if (p.textContent.toLowerCase().includes('tutup') && !p.textContent.startsWith('⚠ ')) {
+      p.textContent = '⚠ ' + p.textContent;
+    }
+  });
 }
 
 // Level 5 — TODO: buat SATU elemen <article> untuk satu buku, memakai
-// document.createElement dan textContent (BUKAN innerHTML — aturan ini
+// document.createElement dan textContent (BUKAN — aturan ini
 // berlaku untuk seluruh file, bukan cuma fungsi ini).
 // Struktur minimal: <article><h3>judul</h3><p>penulis</p><p>harga</p></article>
 // Kembalikan elemen itu (jangan langsung ditempel ke halaman di sini).
 export function buatKartuBuku(buku) {
-  return null;
+  const artikel = document.createElement('article');
+  const judul = document.createElement('h3');
+  judul.textContent = buku.judul;
+  artikel.appendChild(judul);
+  const penulis = document.createElement('p');
+  penulis.textContent = buku.penulis;
+  artikel.appendChild(penulis);
+  const harga = document.createElement('p');
+  harga.textContent = formatRupiah(buku.harga);
+  artikel.appendChild(harga);
+  return artikel;
 }
 
 // Level 6 & 10 — TODO: kosongkan #katalog, lalu render ulang dari `data`.
@@ -59,14 +77,36 @@ export function buatKartuBuku(buku) {
 //   "Tidak ada buku yang cocok." — jangan biarkan #katalog kosong melompong.
 // - Setiap kartu yang ditampilkan harus bisa diklik (lihat Level 7).
 export function render(data) {
-  // tulis di sini
+  const katalogDiv = document.querySelector('#katalog');
+  katalogDiv.textContent = '';
+
+  const ringkasan = document.querySelector('#ringkasan');
+  ringkasan.textContent = `Menampilkan ${data.length} buku.`;
+
+  if (data.length === 0) {
+    katalogDiv.textContent = 'Tidak ada buku yang cocok.';
+    return;
+  }
+
+  data.forEach(buku => {
+    const kartu = buatKartuBuku(buku);
+    kartu.addEventListener('click', () => tampilkanDetail(buku));
+    katalogDiv.appendChild(kartu);
+  });
 }
 
 // Level 7 — dipanggil saat sebuah kartu diklik. TODO: tampilkan judul,
-// penulis, dan harga buku itu di #panel-detail (textContent, bukan innerHTML).
+// penulis, dan harga buku itu di #panel-detail (textContent, bukan).
+// Tiap kartu yang dibuat perlu tahu "aku mewakili buku yang mana", supaya
+// saat diklik, ia tahu detail buku siapa yang harus ditampilkan. Ada satu
+// konsep JavaScript yang membuat sebuah fungsi "mengingat" nilai dari luar
+// dirinya, walau dipanggil belakangan (saat diklik, bukan saat dibuat).
+// expected: "Bumi Manusia oleh Pramoedya Ananta Toer, harga Rp 60.000"
 function tampilkanDetail(buku) {
-  // tulis di sini
+  const panelDetail = document.querySelector('#panel-detail');
+  panelDetail.textContent = `${buku.judul} oleh ${buku.penulis}, harga ${formatRupiah(buku.harga)}`;
 }
+
 
 // Level 8 & 9 — TODO: pasang event listener 'submit' pada #form-cari.
 // - Level 8: cegah reload halaman (preventDefault).
@@ -74,7 +114,14 @@ function tampilkanDetail(buku) {
 //   mengandung kata itu (tanpa peduli huruf besar/kecil), lalu panggil
 //   render(hasil) — bukan menulis ulang kode tampilan di sini.
 export function pasangFormCari() {
-  // tulis di sini
+  const form = document.querySelector('#form-cari');
+  form.addEventListener('submit', function(event) {
+    event.preventDefault();
+    const input = document.querySelector('#input-cari');
+    const query = input.value.toLowerCase();
+    const hasil = katalog.filter(buku => buku.judul.toLowerCase().includes(query));
+    render(hasil);
+  });
 }
 
 // Bootstrap halaman — jangan hapus, ini yang membuat halaman "hidup" saat
