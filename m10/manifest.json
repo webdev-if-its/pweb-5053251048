@@ -1,6 +1,7 @@
 {
-  "name": "Aplikasi Web Saya",
-  "start_url": "/",
+  "name": "Taman Baca RW 04",
+  "short_name": "Taman Baca",
+  "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#ffffff",
   "icons": [
