@@ -14,6 +14,10 @@ function adalahAsetStatis(request) {
 // Level 5 — TODO: coba ambil dari cache dulu (caches.match). Kalau ada,
 // kembalikan itu. Kalau tidak ada, baru fetch() ke jaringan.
 async function cacheFirst(request) {
+  const cachedResponse = await caches.match(request);
+  if (cachedResponse) {
+    return cachedResponse;
+  }
   return fetch(request);
 }
 
@@ -22,7 +26,15 @@ async function cacheFirst(request) {
 // dari cache. Kalau di cache juga tidak ada, biarkan error itu terus
 // menyebar (jangan ditangkap diam-diam dengan mengembalikan undefined).
 async function networkFirst(request) {
-  return fetch(request);
+  try {
+    return await fetch(request);
+  } catch (error) {
+    const cachedResponse = await caches.match(request);
+    if (cachedResponse) {
+      return cachedResponse;
+    }
+    throw error;
+  }
 }
 
 // Level 3 — TODO: daftarkan listener 'install' lewat
@@ -30,7 +42,11 @@ async function networkFirst(request) {
 //
 // Level 4 — di dalam listener itu: pakai event.waitUntil(...) untuk
 // membuka cache bernama NAMA_CACHE (caches.open), lalu addAll(ASET_UTAMA).
-
+self.addEventListener('install', (event) => {
+  event.waitUntil(
+    caches.open(NAMA_CACHE).then((cache) => cache.addAll(ASET_UTAMA))
+  );
+});
 // Level 3 — TODO: daftarkan listener 'activate'.
 //
 // Level 9 — di dalam listener itu: pakai event.waitUntil(...) untuk
@@ -38,7 +54,17 @@ async function networkFirst(request) {
 // Pakai caches.keys() untuk melihat semua nama cache yang ada, lalu
 // caches.delete(nama) untuk yang sudah usang. Jangan hapus NAMA_CACHE
 // yang sedang dipakai.
-
+self.addEventListener('activate', (event) => {
+  event.waitUntil(
+    caches.keys().then((daftarNama) =>
+      Promise.all(
+        daftarNama
+          .filter((nama) => nama !== NAMA_CACHE)
+          .map((nama) => caches.delete(nama))
+      )
+    )
+  );
+});
 // Level 3 — TODO: daftarkan listener 'fetch'.
 //
 // Level 7 — di dalam listener itu, route permintaan ke strategi yang
@@ -49,3 +75,20 @@ async function networkFirst(request) {
 // (request.mode === 'navigate') yang gagal total (networkFirst
 // menolak/reject), kembalikan caches.match('/offline.html') sebagai
 // cadangan, alih-alih membiarkan halamannya gagal dimuat.
+self.addEventListener('fetch', (event) => {
+  const request = event.request;
+  event.respondWith(
+    (async () => {
+      try {
+        return adalahAsetStatis(request)
+          ? await cacheFirst(request)
+          : await networkFirst(request);
+      } catch (error) {
+        if (request.mode === 'navigate') {
+          return caches.match('/offline.html');
+        }
+        throw error;
+      }
+    })()
+  );
+});
