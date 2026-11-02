@@ -1,0 +1,7 @@
+{
+  "name": "App",
+  "start_url": "/",
+  "display": "browser",
+  "background_color": "#ffffff",
+  "icons": []
+}
