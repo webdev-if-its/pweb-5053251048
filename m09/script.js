@@ -20,9 +20,16 @@ export async function urutanEksekusi() {
   const urutan = [];
   urutan.push('sinkron');
 
+  const promise = new Promise((resolve) => {
+    setTimeout(() => {
+      urutan.push('setTimeout');
+      resolve();
+    }, 0);
+  });
   setTimeout(() => urutan.push('setTimeout'), 0);
   Promise.resolve().then(() => urutan.push('promise'));
 
+  await promise;
   return urutan;
 }
 
@@ -37,12 +44,19 @@ export async function urutanEksekusi() {
 // - Level 4: fetch() TIDAK menolak (reject) promise-nya untuk status error
 //   seperti 404/500 — hanya untuk kegagalan jaringan. Periksa
 //   `response.ok`; kalau false, `throw new Error(...)` sendiri.
-export function ambilBuku(kataKunci) {
+export async function ambilBuku(kataKunci) {
   const url = `https://openlibrary.org/search.json?q=${encodeURIComponent(kataKunci)}&limit=5`;
-  return fetch(url)
-    .then((res) => res.json())
-    .then((json) => json.docs);
-}
+  const res = await fetch(url);
+  if (!res.ok) {
+    throw new Error('Gagal memuat data');
+  }
+  const json = await res.json();
+  return json.docs .map((item) => ({
+    judul: item.title,
+    penulis: item.author_name?.[0] ?? 'Tidak diketahui',
+    tahun: item.first_publish_year,
+  }));
+};
 
 // -------------------------------------------------------------- RENDER
 // Sudah lengkap — pola yang sama seperti render() di Pertemuan 5: satu
@@ -90,6 +104,27 @@ let permintaanTerakhir = 0;
 //   yang paling baru.
 export async function cariDanRender(kataKunci) {
   // tulis di sini
+  permintaanTerakhir++;
+  const idPermintaan = permintaanTerakhir;
+
+  const status = document.querySelector('#status-pencarian');
+  status.textContent = 'Memuat...';
+
+  try {
+    const data = await ambilBuku(kataKunci);
+    
+    if (idPermintaan !== permintaanTerakhir) return;
+
+    if (data.length === 0) {
+      status.textContent = 'Tidak ada buku ditemukan.';
+    } else {
+      status.textContent = '';
+      render(data);
+    }
+  } catch (error) {
+    if (idPermintaan !== permintaanTerakhir) return;
+    status.textContent = 'Gagal memuat data. Coba lagi.';
+  }
 }
 
 // ------------------------------------------------------------- LEVEL 8–9
@@ -101,7 +136,21 @@ export async function cariDanRender(kataKunci) {
 //   JEDA_DEBOUNCE, baru cari.
 export function pasangPencarianOnline() {
   // tulis di sini
+  const input = document.querySelector('#input-cari-online');
+  let timeoutId = null;
+
+  input.addEventListener('input', () => {
+    clearTimeout(timeoutId);
+    
+    timeoutId = setTimeout(() => {
+      const kataKunci = input.value.trim();
+      if (kataKunci) {
+        cariDanRender(kataKunci);
+      }
+    }, JEDA_DEBOUNCE);
+  });
 }
+
 
 // -------------------------------------------------------------- BOOTSTRAP
 
